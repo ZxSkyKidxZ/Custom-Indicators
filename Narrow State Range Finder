@@ -1,0 +1,64 @@
+//@version=6
+indicator("Narrow State Range Finder", overlay=true)
+
+// --- Inputs ---
+threshold = input.float(0.5, "Narrowness Threshold (%)", step=0.1, tooltip="How close Price, 20, and 200 SMA must be to each other.")
+elephantMult = input.float(1.2, "Elephant Bar Multiplier", step=0.1)
+
+// --- 1. Core Elements ---
+sma20  = ta.sma(close, 20)
+sma200 = ta.sma(close, 200)
+price  = close
+
+// --- 2. Narrow State Calculation ---
+// Find the max and min of the three elements
+highestPoint = math.max(price, math.max(sma20, sma200))
+lowestPoint  = math.min(price, math.min(sma20, sma200))
+
+// Calculate total spread as a percentage
+spreadPerc = ((highestPoint - lowestPoint) / lowestPoint) * 100
+
+// The state is "Narrow" only if all three are within the threshold
+isNarrow = spreadPerc <= threshold
+
+// --- 3. Plotting the Range Finder ---
+// The cloud only appears when all 3 elements are squeezing together
+p1 = plot(isNarrow ? highestPoint : na, "Range Top", color.new(color.blue, 50))
+p2 = plot(isNarrow ? lowestPoint : na, "Range Bottom", color.new(color.blue, 50))
+fill(p1, p2, color=color.new(color.yellow, 80), title="Narrow State Cloud")
+
+// --- 4. Elephant Bar Signal ---
+avgRange = ta.sma(high - low, 20)
+isElephant = (high - low) > (avgRange * elephantMult) and math.abs(open - close) > (high - low) * 0.7
+
+// Global cross variables calculated outside conditional expressions to maintain history
+crossOverHighest  = ta.crossover(price, highestPoint)
+crossUnderHighest = ta.crossunder(price, highestPoint)
+crossOverLowest   = ta.crossover(price, lowestPoint)
+crossUnderLowest  = ta.crossunder(price, lowestPoint)
+
+// Signal: Check crossover against the narrow range to avoid self-referencing logic
+longSignal  = isElephant and close > open and isNarrow and crossOverHighest
+shortSignal = isElephant and close < open and isNarrow and crossUnderLowest
+
+// --- Visuals ---
+plotshape(longSignal, "Long Breakout", shape.triangleup, location.belowbar, color.green, size=size.normal, text="LONG")
+plotshape(shortSignal, "Short Breakout", shape.triangledown, location.abovebar, color.red, size=size.normal, text="SHORT")
+
+// --- 5. Alerts ---
+// State changes for entering and exiting the cloud
+enterCloud = not isNarrow[1] and isNarrow
+exitCloud  = isNarrow[1] and not isNarrow
+
+// Tracking if the narrow state changed on the current bar
+narrowStateChanged = ta.change(isNarrow)
+
+// Price crossing into/out of the cloud while it exists
+priceEntersCloud = isNarrow and not narrowStateChanged and ((crossOverLowest and price < highestPoint) or (crossUnderHighest and price > lowestPoint))
+priceExitsCloud  = isNarrow and (crossOverHighest or crossUnderLowest)
+
+// Alert Conditions
+alertcondition(enterCloud, "Cloud Formed / Entered Narrow State", "The market has entered a Narrow State and the cloud has formed.")
+alertcondition(exitCloud, "Cloud Dissolved / Exited Narrow State", "The market has exited the Narrow State and the cloud has dissolved.")
+alertcondition(priceEntersCloud, "Price Entered Cloud", "Price has crossed inside the active Narrow State Cloud boundaries.")
+alertcondition(priceExitsCloud, "Price Exited Cloud", "Price has broken out or down through the active Narrow State Cloud boundaries.")

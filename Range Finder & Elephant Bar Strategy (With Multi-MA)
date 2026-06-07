@@ -1,0 +1,174 @@
+//@version=6
+indicator("Range Finder & Elephant Bar Strategy (With Multi-MA)", overlay=true)
+
+// ==========================================
+// --- GROUP 1: GLOBAL CONFIGURATION ---
+// ==========================================
+atrLength          = input.int(14, title="ATR Reference Length", minval=1, group="GLOBAL CONFIGURATION", tooltip="The period lookback used to compute the base ATR value.")
+
+// ==========================================
+// --- GROUP 2: SLOW MOVING AVERAGES ---
+// ==========================================
+showSlow1          = input.bool(true, title="Enable Slow MA 1", group="SLOW MOVING AVERAGES")
+typeSlow1          = input.string("SMA", title="↳ MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="SLOW MOVING AVERAGES")
+lenSlow1           = input.int(20, title="↳ Length", minval=1, group="SLOW MOVING AVERAGES")
+
+showSlow2          = input.bool(false, title="Enable Slow MA 2", group="SLOW MOVING AVERAGES")
+typeSlow2          = input.string("SMA", title="↳ MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="SLOW MOVING AVERAGES")
+lenSlow2           = input.int(40, title="↳ Length", minval=1, group="SLOW MOVING AVERAGES")
+
+showSlow3          = input.bool(false, title="Enable Slow MA 3", group="SLOW MOVING AVERAGES")
+typeSlow3          = input.string("SMA", title="↳ MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="SLOW MOVING AVERAGES")
+lenSlow3           = input.int(60, title="↳ Length", minval=1, group="SLOW MOVING AVERAGES")
+
+// ==========================================
+// --- GROUP 3: FAST MOVING AVERAGES ---
+// ==========================================
+showFast1          = input.bool(true, title="Enable Fast MA 1", group="FAST MOVING AVERAGES")
+typeFast1          = input.string("SMA", title="↳ MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="FAST MOVING AVERAGES")
+lenFast1           = input.int(200, title="↳ Length", minval=1, group="FAST MOVING AVERAGES")
+
+showFast2          = input.bool(false, title="Enable Fast MA 2", group="FAST MOVING AVERAGES")
+typeFast2          = input.string("SMA", title="↳ MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="FAST MOVING AVERAGES")
+lenFast2           = input.int(150, title="↳ Length", minval=1, group="FAST MOVING AVERAGES")
+
+showFast3          = input.bool(false, title="Enable Fast MA 3", group="FAST MOVING AVERAGES")
+typeFast3          = input.string("SMA", title="↳ MA Type", options=["SMA", "EMA", "WMA", "HMA"], group="FAST MOVING AVERAGES")
+lenFast3           = input.int(100, title="↳ Length", minval=1, group="FAST MOVING AVERAGES")
+
+// ==========================================
+// --- GROUP 4: PERCENTAGE ENGINE MODE ---
+// ==========================================
+usePercentMode     = input.bool(true, title="Enable Percentage Filter", group="PERCENTAGE ENGINE MODE")
+threshold_ma_ma    = input.float(1.0, title="↳ Slow/Fast MA Max Max Distance (%)", minval=0.0, step=0.1, group="PERCENTAGE ENGINE MODE", tooltip="Calculated using the first active Slow and Fast MA pair.")
+threshold_maSlow_p = input.float(1.0, title="↳ Slow MA & Price Max Distance (%)", minval=0.0, step=0.1, group="PERCENTAGE ENGINE MODE")
+threshold_maFast_p = input.float(2.0, title="↳ Fast MA & Price Max Distance (%)", minval=0.0, step=0.1, group="PERCENTAGE ENGINE MODE")
+
+// ==========================================
+// --- GROUP 5: ATR MULTIPLIER ENGINE MODE ---
+// ==========================================
+useAtrMode         = input.bool(false, title="Enable ATR Multiplier Filter", group="ATR MULTIPLIER ENGINE MODE")
+atr_mult_ma_ma     = input.float(0.50, title="↳ Slow/Fast MA Max Max Distance (ATR Mult)", minval=0.0, step=0.01, group="ATR MULTIPLIER ENGINE MODE")
+atr_mult_maSlow_p  = input.float(0.25, title="↳ Slow MA & Price Max Distance (ATR Mult)", minval=0.0, step=0.01, group="ATR MULTIPLIER ENGINE MODE")
+atr_mult_maFast_p  = input.float(0.75, title="↳ Fast MA & Price Max Distance (ATR Mult)", minval=0.0, step=0.01, group="ATR MULTIPLIER ENGINE MODE")
+
+// ==========================================
+// --- GROUP 6: ELEPHANT BAR STRATEGY ---
+// ==========================================
+useElephant        = input.bool(true, title="Enable Elephant Bar Strategy", group="ELEPHANT BAR STRATEGY")
+lookback           = input.int(5, "Elephant Lookback (Bars to compare)", minval=1, group="ELEPHANT BAR STRATEGY")
+bodyThreshold      = input.float(70.0, "Min Body % of Total Range", minval=1.0, maxval=100.0, group="ELEPHANT BAR STRATEGY")
+sizeMult           = input.float(1.5, "Size Multiplier", minval=0.0, step=0.01, group="ELEPHANT BAR STRATEGY")
+
+// --- Moving Average Function Router ---
+get_ma(string type, float source, int length) =>
+    switch type
+        "SMA" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        "WMA" => ta.wma(source, length)
+        "HMA" => ta.hma(source, length)
+        => ta.sma(source, length)
+
+// --- Compute All 6 Moving Averages ---
+slow1 = get_ma(typeSlow1, close, lenSlow1)
+slow2 = get_ma(typeSlow2, close, lenSlow2)
+slow3 = get_ma(typeSlow3, close, lenSlow3)
+
+fast1 = get_ma(typeFast1, close, lenFast1)
+fast2 = get_ma(typeFast2, close, lenFast2)
+fast3 = get_ma(typeFast3, close, lenFast3)
+
+// --- Plot Moving Averages Based on Individual Toggles ---
+plot(showSlow1 ? slow1 : na, color=color.new(color.green, 0), title="Slow MA 1", linewidth=2)
+plot(showSlow2 ? slow2 : na, color=color.new(color.teal, 20), title="Slow MA 2", linewidth=1)
+plot(showSlow3 ? slow3 : na, color=color.new(color.olive, 20), title="Slow MA 3", linewidth=1)
+
+plot(showFast1 ? fast1 : na, color=color.new(color.red, 0), title="Fast MA 1", linewidth=2)
+plot(showFast2 ? fast2 : na, color=color.new(color.maroon, 20), title="Fast MA 2", linewidth=1)
+plot(showFast3 ? fast3 : na, color=color.new(color.orange, 20), title="Fast MA 3", linewidth=1)
+
+// --- Baseline Core Fallback Metrics for Matrix Verification ---
+// Uses the first active line, falling back down the stack if things are turned off
+activeSlow = showSlow1 ? slow1 : (showSlow2 ? slow2 : (showSlow3 ? slow3 : close))
+activeFast = showFast1 ? fast1 : (showFast2 ? fast2 : (showFast3 ? fast3 : close))
+currentAtr = ta.atr(atrLength)
+avgRange   = ta.sma(high - low, lookback)
+
+// Raw Baseline Calculations
+raw_dist_ma_ma     = math.abs(activeSlow - activeFast)
+raw_dist_maSlow_p  = math.abs(close - activeSlow)
+raw_dist_maFast_p  = math.abs(close - activeFast)
+
+// --- Squeeze Calculations (Percentage Engine) ---
+pct_ma_ma     = (raw_dist_ma_ma / activeFast) * 100
+pct_maSlow_p  = (raw_dist_maSlow_p / activeSlow) * 100
+pct_maFast_p  = (raw_dist_maFast_p / activeFast) * 100
+
+pctPass       = not usePercentMode or ((pct_ma_ma <= threshold_ma_ma) and (pct_maSlow_p <= threshold_maSlow_p) and (pct_maFast_p <= threshold_maFast_p))
+
+// --- Squeeze Calculations (ATR Engine) ---
+atr_dist_ma_ma     = raw_dist_ma_ma / currentAtr
+atr_dist_maSlow_p  = raw_dist_maSlow_p / currentAtr
+atr_dist_maFast_p  = raw_dist_maFast_p / currentAtr
+
+atrPass       = not useAtrMode or ((atr_dist_ma_ma <= atr_mult_ma_ma) and (atr_dist_maSlow_p <= atr_mult_maSlow_p) and (atr_dist_maFast_p <= atr_mult_maFast_p))
+
+// --- Combined Master Trigger & Transition State Logic ---
+bool isNarrow      = (usePercentMode or useAtrMode) and pctPass and atrPass
+
+bool enteredNarrow = isNarrow and not isNarrow
+bool exitedNarrow  = not isNarrow and isNarrow
+
+// --- Dynamic Cloud Range Boundaries ---
+// Gathers pricing inputs ONLY from elements currently visible and checked "On"
+float topBoundary = close
+float botBoundary = close
+
+if showSlow1
+    topBoundary := math.max(topBoundary, slow1)
+    botBoundary := math.min(botBoundary, slow1)
+if showSlow2
+    topBoundary := math.max(topBoundary, slow2)
+    botBoundary := math.min(botBoundary, slow2)
+if showSlow3
+    topBoundary := math.max(topBoundary, slow3)
+    botBoundary := math.min(botBoundary, slow3)
+if showFast1
+    topBoundary := math.max(topBoundary, fast1)
+    botBoundary := math.min(botBoundary, fast1)
+if showFast2
+    topBoundary := math.max(topBoundary, fast2)
+    botBoundary := math.min(botBoundary, fast2)
+if showFast3
+    topBoundary := math.max(topBoundary, fast3)
+    botBoundary := math.min(botBoundary, fast3)
+
+// --- Visual Range Display Cloud Output ---
+p1 = plot(isNarrow ? topBoundary : na, "Range Top", color.new(color.blue, 50))
+p2 = plot(isNarrow ? botBoundary : na, "Range Bottom", color.new(color.blue, 50))
+fill(p1, p2, color=color.new(color.yellow, 80), title="Narrow State Cloud")
+
+// --- Visual State Indicators on Chart ---
+plotshape(enteredNarrow, title="Entered Squeeze", style=shape.triangleup, location=location.belowbar, color=color.teal, size=size.small)
+plotshape(exitedNarrow, title="Exited Squeeze", style=shape.triangledown, location=location.abovebar, color=color.orange, size=size.small)
+
+// ==========================================
+// --- ELEPHANT BAR LOGIC ---
+// ==========================================
+isLarge     = (high - low) > (avgRange * sizeMult)
+bodySize    = math.abs(open - close)
+candleRange = high - low
+isDense     = candleRange > 0 ? (bodySize / candleRange) * 100 >= bodyThreshold : false
+
+isBullishElephant = useElephant and (close > open) and isLarge and isDense
+isBearishElephant = useElephant and (close < open) and isLarge and isDense
+
+plotshape(isBullishElephant, style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, title="Bullish Elephant Signal")
+plotshape(isBearishElephant, style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, title="Bearish Elephant Signal")
+
+barcolor(isBullishElephant ? color.new(color.green, 0) : isBearishElephant ? color.new(color.red, 0) : na)
+
+// ==========================================
+// --- ALERT SYSTEM FUNCTIONS ---
+// ==========================================
+alert_enter_message = "💥 NARROW STATE ENTERED: " + syminfo.ticker + " (" + timeframe.period + ") compressed at price " + str.tostring(close) + "."

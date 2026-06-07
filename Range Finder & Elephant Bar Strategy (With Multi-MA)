@@ -40,9 +40,9 @@ lenFast3           = input.int(100, title="↳ Length", minval=1, group="FAST MO
 // --- GROUP 4: PERCENTAGE ENGINE MODE ---
 // ==========================================
 usePercentMode     = input.bool(true, title="Enable Percentage Filter", group="PERCENTAGE ENGINE MODE")
-threshold_ma_ma    = input.float(1.0, title="↳ Slow/Fast MA Max Max Distance (%)", minval=0.0, step=0.1, group="PERCENTAGE ENGINE MODE", tooltip="Calculated using the first active Slow and Fast MA pair.")
-threshold_maSlow_p = input.float(1.0, title="↳ Slow MA & Price Max Distance (%)", minval=0.0, step=0.1, group="PERCENTAGE ENGINE MODE")
-threshold_maFast_p = input.float(2.0, title="↳ Fast MA & Price Max Distance (%)", minval=0.0, step=0.1, group="PERCENTAGE ENGINE MODE")
+threshold_ma_ma    = input.float(1.0, title="↳ Slow/Fast MA Max Max Distance (%)", minval=0.0, step=0.01, group="PERCENTAGE ENGINE MODE", tooltip="Calculated using the first active Slow and Fast MA pair.")
+threshold_maSlow_p = input.float(1.0, title="↳ Slow MA & Price Max Distance (%)", minval=0.0, step=0.01, group="PERCENTAGE ENGINE MODE")
+threshold_maFast_p = input.float(2.0, title="↳ Fast MA & Price Max Distance (%)", minval=0.0, step=0.01, group="PERCENTAGE ENGINE MODE")
 
 // ==========================================
 // --- GROUP 5: ATR MULTIPLIER ENGINE MODE ---
